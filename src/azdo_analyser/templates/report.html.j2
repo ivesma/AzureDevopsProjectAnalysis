@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f6f4; --surface-1: #fcfcfb; --surface-2: #f0efec; --border: #dddcd7;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #7a7974;
+  --series-1: #2a78d6; --accent: #2a78d6; --grid: #e6e5e1; --link: #1c5cab;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #383835;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+    --series-1: #3987e5; --accent: #3987e5; --grid: #2c2c2a; --link: #86b6ef;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --border: #383835;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+  --series-1: #3987e5; --accent: #3987e5; --grid: #2c2c2a; --link: #86b6ef;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--link); }
+header.top { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--surface-1); border-bottom: 1px solid var(--border); }
+header.top h1 { font-size: 16px; margin: 0; flex: 1 1 auto; }
+header.top .meta { color: var(--text-secondary); font-size: 12px; }
+input[type=search], select { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font: inherit; }
+input[type=search] { width: min(320px, 100%); }
+button { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; font: inherit; }
+.layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); }
+nav.side { position: sticky; top: 52px; align-self: start; height: calc(100vh - 52px); overflow: auto; padding: 12px;
+  border-right: 1px solid var(--border); }
+nav.side a { display: block; padding: 4px 8px; border-radius: 4px; color: var(--text-secondary); text-decoration: none; }
+nav.side a:hover { background: var(--surface-2); color: var(--text-primary); }
+main { padding: 16px; min-width: 0; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } nav.side { display: none; } }
+section.card, details.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 16px; }
+details.card > summary { cursor: pointer; font-weight: 600; font-size: 16px; list-style: none; }
+details.card > summary::before { content: "▸ "; color: var(--text-muted); }
+details.card[open] > summary::before { content: "▾ "; }
+h2 { font-size: 18px; margin: 0 0 10px; }
+h3 { font-size: 14px; margin: 16px 0 6px; color: var(--text-secondary); }
+.muted { color: var(--text-muted); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+.kpi .label { color: var(--text-secondary); font-size: 12px; }
+.kpi .value { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi .sub { color: var(--text-muted); font-size: 12px; }
+.scores { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.score { flex: 1 1 200px; background: var(--surface-2); border-radius: 8px; padding: 12px; }
+.score .num { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.meter { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.meter > span { display: block; height: 100%; background: var(--series-1); border-radius: 4px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+figure.mini { margin: 0; } figure.mini figcaption { font-size: 12px; color: var(--text-secondary); }
+svg.chart text { font: 11px system-ui, sans-serif; }
+svg.chart .axis-label { fill: var(--text-secondary); }
+svg.chart .value-label { fill: var(--text-primary); font-variant-numeric: tabular-nums; }
+svg.chart .baseline { stroke: var(--text-muted); stroke-width: 1; }
+svg.chart .grid { stroke: var(--grid); stroke-width: 1; }
+svg.chart .col { fill: var(--series-1); }
+svg.chart .hit:hover { fill: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+#tip { position: fixed; pointer-events: none; background: var(--text-primary); color: var(--surface-1); padding: 4px 8px;
+  border-radius: 4px; font-size: 12px; display: none; z-index: 50; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;
+  color: #fff; white-space: nowrap; }
+.badge.LOW, .badge.INFO { color: #111; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+.chip { border-radius: 14px; padding: 3px 10px; }
+.chip[aria-pressed="false"] { opacity: .45; }
+.finding { border: 1px solid var(--border); border-left: 4px solid var(--sev); border-radius: 8px; padding: 8px 12px;
+  margin-bottom: 8px; background: var(--surface-1); }
+.finding summary { cursor: pointer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.finding .res { color: var(--text-secondary); font-size: 12px; }
+.finding ol { margin: 4px 0 0 18px; padding: 0; }
+.table-wrap { overflow: auto; max-height: 560px; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top;
+  min-width: 6em; max-width: 360px; overflow-wrap: break-word; }
+td:first-child { white-space: nowrap; font-weight: 500; }
+th { position: sticky; top: 0; background: var(--surface-2); cursor: pointer; white-space: nowrap; z-index: 1; }
+th[data-dir="asc"]::after { content: " ▲"; } th[data-dir="desc"]::after { content: " ▼"; }
+tr:hover td { background: var(--surface-2); }
+pre.mermaid { background: #fff; border-radius: 8px; padding: 8px; overflow: auto; text-align: center; }
+.diagram { margin-bottom: 14px; }
+.rec { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+<header class="top">
+  <h1>{{ project }} <span class="muted">· Azure DevOps assessment</span></h1>
+  <span class="meta">{{ organisation }} · generated {{ generated }} · {{ window }}-day window</span>
+  <input type="search" id="search" placeholder="Search everything…" aria-label="Search the report">
+  <button id="expand" type="button">Expand all</button>
+  <button id="theme" type="button" aria-label="Toggle theme">◐ Theme</button>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Sections">
+  <a href="#dashboard">Dashboard</a><a href="#summary">Executive summary</a><a href="#recommendations">Recommendations</a>
+  <a href="#findings">Findings</a><a href="#flows">Pipeline stage flows</a>
+  {% for s in sections %}<a href="#{{ s.id }}">{{ s.title }}</a>{% endfor %}
+  <a href="#anti-patterns">YAML anti-patterns</a><a href="#wiki-maps">Wiki site maps</a>
+  <a href="#trends">Trends &amp; drift</a><a href="#coverage">Data coverage</a>
+</nav>
+<main>
+<section class="card" id="dashboard">
+  <h2>Risk dashboard</h2>
+  <div class="scores">
+    {% for g in [risk, debt] %}
+    <div class="score"><div class="muted">{{ g.label }} (0-100, lower is better)</div>
+      <div class="num">{{ g.score }} <span class="muted" style="font-size:16px">grade {{ g.grade }}</span></div>
+      <div class="meter"><span style="width: {{ g.score }}%"></span></div></div>
+    {% endfor %}
+    <div class="score"><div class="muted">Findings by severity</div>
+      <div class="chips" style="margin-top:6px">{% for sev, n in counts.items() %}{% if n %}
+        <span class="badge {{ sev }}" style="background: {{ severity_colors[sev] }}">{{ sev }} {{ n }}</span>{% endif %}{% endfor %}</div></div>
+  </div>
+  <div class="kpis">
+    {% for label, value, sub in kpis %}
+    <div class="kpi"><div class="label">{{ label }}</div><div class="value">{{ value }}</div><div class="sub">{{ sub }}</div></div>
+    {% endfor %}
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div><h3>Findings by severity</h3>{{ severity_chart }}</div>
+    <div><h3>Weighted risk by category</h3>{{ category_chart }}</div>
+  </div>
+  <h3>Activity (last {{ window }} days, weekly)</h3>
+  <div class="grid3">{% for c in activity_charts %}{{ c }}{% endfor %}</div>
+  <div class="grid2" style="margin-top:8px">
+    <div><h3>Most complex pipelines (score)</h3>{{ complexity_chart }}</div>
+    <div><h3>Technical debt components</h3>{{ debt_chart }}</div>
+  </div>
+</section>
+
+<section class="card searchable" id="summary">
+  <h2>Executive summary</h2>
+  <p><strong>{{ summary_headline }}</strong></p>
+  {% for p in summary_paragraphs %}<p style="white-space: pre-line">{{ p }}</p>{% endfor %}
+  {% if summary_source and summary_source.startswith('llm') %}<p class="muted">Narrative generated by {{ summary_source[4:] }} from the assessment data.</p>{% endif %}
+</section>
+
+<details class="card" id="recommendations" open>
+  <summary>Recommendations ({{ recommendations|length }})</summary>
+  {% for r in recommendations %}
+  <div class="rec searchable-item">
+    <span class="badge {{ r.severity }}" style="background: {{ severity_colors[r.severity] }}">{{ r.severity }}</span>
+    <strong>{{ loop.index }}. {{ r.title }}</strong> <span class="muted">· {{ r.category }} · {{ r.occurrences }} occurrence(s)</span>
+    <div><em>Impact:</em> {{ r.impact }}</div>
+    <div><em>Recommendation:</em> {{ r.recommendation }}</div>
+    {% if r.remediation %}<ol>{% for s in r.remediation %}<li>{{ s }}</li>{% endfor %}</ol>{% endif %}
+    <div class="muted">Affected: {{ r.resources[:15]|join(', ') }}{% if r.resources|length > 15 %} …{% endif %}</div>
+  </div>
+  {% endfor %}
+</details>
+
+<details class="card" id="findings" open>
+  <summary>Findings ({{ findings|length }})</summary>
+  <div class="chips" role="group" aria-label="Filter by severity">
+    {% for sev, n in counts.items() %}{% if n %}
+    <button class="chip" type="button" data-sev="{{ sev }}" aria-pressed="true">
+      <span class="badge {{ sev }}" style="background: {{ severity_colors[sev] }}">{{ sev }}</span> {{ n }}</button>{% endif %}{% endfor %}
+    <select id="category-filter" aria-label="Filter by category"><option value="">All categories</option>
+      {% for c in categories %}<option>{{ c }}</option>{% endfor %}</select>
+  </div>
+  {% for f in findings %}
+  <details class="finding searchable-item" data-sev="{{ f.severity }}" data-cat="{{ f.category }}" style="--sev: {{ f.color }}">
+    <summary><span class="badge {{ f.severity }}" style="background: {{ f.color }}">{{ f.severity }}</span>
+      <strong>{{ f.title }}</strong><span class="res">{{ f.resource_type }}: {{ f.resource }} · {{ f.category }}</span></summary>
+    <p>{{ f.description }}</p><p><em>Impact:</em> {{ f.impact }}</p><p><em>Recommendation:</em> {{ f.recommendation }}</p>
+    {% if f.remediation %}<ol>{% for s in f.remediation %}<li>{{ s }}</li>{% endfor %}</ol>{% endif %}
+    {% if f.url %}<p><a href="{{ f.url }}" target="_blank" rel="noopener">Open in Azure DevOps</a></p>{% endif %}
+  </details>
+  {% endfor %}
+</details>
+
+<details class="card" id="flows">
+  <summary>Pipeline stage flows ({{ pipeline_flows|length }})</summary>
+  {% for d in pipeline_flows %}
+  <details class="diagram searchable-item"><summary>{{ d.title }}</summary><pre class="mermaid">{{ d.code }}</pre></details>
+  {% endfor %}
+</details>
+
+{% for s in sections %}
+<details class="card" id="{{ s.id }}">
+  <summary>{{ s.title }} ({{ s.total }})</summary>
+  {% for d in s.diagrams %}
+  <div class="diagram"><h3>{{ d.title }}</h3><p class="muted">{{ d.description }}</p><pre class="mermaid">{{ d.code }}</pre></div>
+  {% endfor %}
+  {% if s.rows %}
+  <div class="table-wrap"><table class="data"><thead><tr>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for row in s.rows %}<tr class="searchable-item">{% for v in row %}<td>{% if v.startswith('http') %}<a href="{{ v }}" target="_blank" rel="noopener">open</a>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+  {% if s.total > s.rows|length %}<p class="muted">Showing {{ s.rows|length }} of {{ s.total }} rows - see the Excel workbook for all.</p>{% endif %}
+  {% else %}<p class="muted">No data collected (see Data coverage).</p>{% endif %}
+</details>
+{% endfor %}
+
+<details class="card" id="anti-patterns">
+  <summary>YAML anti-patterns ({{ anti_patterns|length }})</summary>
+  {% if anti_patterns %}
+  <div class="table-wrap"><table class="data"><thead><tr><th>Pipeline</th><th>Rule</th><th>Severity</th><th>Title</th><th>Detail</th><th>Recommendation</th></tr></thead><tbody>
+  {% for a in anti_patterns %}<tr class="searchable-item"><td>{{ a.Pipeline }}</td><td>{{ a.Rule }}</td><td><span class="badge {{ a.Severity }}" style="background: {{ severity_colors[a.Severity] }}">{{ a.Severity }}</span></td><td>{{ a.Title }}</td><td>{{ a.Detail }}</td><td>{{ a.Recommendation }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="muted">None detected.</p>{% endif %}
+</details>
+
+<details class="card" id="wiki-maps">
+  <summary>Wiki site maps ({{ wiki_maps|length }})</summary>
+  {% for d in wiki_maps %}<div class="diagram"><h3>{{ d.title }}</h3><pre class="mermaid">{{ d.code }}</pre></div>{% else %}<p class="muted">No wiki pages found.</p>{% endfor %}
+</details>
+
+<details class="card" id="trends">
+  <summary>Trends &amp; architectural drift</summary>
+  {% if trends %}
+  <p>Compared with the run of {{ trends.previous_run }}: risk score {{ trends.risk_score.previous }} → {{ trends.risk_score.current }},
+     technical debt {{ trends.technical_debt.previous }} → {{ trends.technical_debt.current }};
+     {{ trends.new_findings|length }} new and {{ trends.resolved_findings|length }} resolved findings.</p>
+  {% for name, change in trends.drift.items() %}<h3>{{ name }}</h3><ul>
+    {% for e in change.added %}<li>➕ {{ e }}</li>{% endfor %}{% for e in change.removed %}<li>➖ {{ e }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">No dependency changes detected.</p>{% endfor %}
+  {% else %}<p class="muted">Trends appear from the second run into the same output folder.</p>{% endif %}
+</details>
+
+<details class="card" id="coverage">
+  <summary>Data coverage ({{ coverage|length }} gaps)</summary>
+  {% if coverage %}<div class="table-wrap"><table class="data"><thead><tr><th>Plugin</th><th>Area</th><th>Status</th><th>Message</th></tr></thead><tbody>
+  {% for c in coverage %}<tr class="searchable-item"><td>{{ c.Plugin }}</td><td>{{ c.Area }}</td><td>{{ c.Status }}</td><td>{{ c.Message }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="muted">Everything in scope was collected.</p>{% endif %}
+</details>
+<p class="muted">azdo-analyser {{ version }}</p>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  const root = document.documentElement;
+  const isDark = () => root.dataset.theme ? root.dataset.theme === "dark"
+    : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  try { const saved = localStorage.getItem("azdo-theme"); if (saved) root.dataset.theme = saved; } catch (e) {}
+  document.getElementById("theme").addEventListener("click", () => {
+    root.dataset.theme = isDark() ? "light" : "dark";
+    try { localStorage.setItem("azdo-theme", root.dataset.theme); } catch (e) {}
+  });
+
+  // Mermaid: render diagrams lazily when their section becomes visible.
+  if (window.mermaid) {
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default", flowchart: { useMaxWidth: true } });
+  }
+  function renderVisible() {
+    if (!window.mermaid) return;
+    const nodes = [...document.querySelectorAll("pre.mermaid:not([data-processed])")].filter(n => n.offsetParent !== null);
+    if (nodes.length) mermaid.run({ nodes }).catch(err => console.warn("mermaid", err));
+  }
+  document.querySelectorAll("details").forEach(d => d.addEventListener("toggle", renderVisible));
+  window.addEventListener("load", renderVisible);
+
+  // Tooltips for chart marks.
+  const tip = document.getElementById("tip");
+  document.addEventListener("mousemove", e => {
+    const t = e.target.closest && e.target.closest("[data-tip]");
+    if (!t) { tip.style.display = "none"; return; }
+    tip.textContent = t.dataset.tip; tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (e.clientY + 14) + "px";
+  });
+
+  // Sortable tables.
+  document.querySelectorAll("table.data").forEach(table => {
+    table.querySelectorAll("th").forEach((th, idx) => th.addEventListener("click", () => {
+      const dir = th.dataset.dir === "asc" ? "desc" : "asc";
+      table.querySelectorAll("th").forEach(h => delete h.dataset.dir); th.dataset.dir = dir;
+      const body = table.tBodies[0];
+      const rows = [...body.rows];
+      const val = r => r.cells[idx] ? r.cells[idx].textContent.trim() : "";
+      rows.sort((a, b) => {
+        const x = val(a), y = val(b), nx = parseFloat(x), ny = parseFloat(y);
+        const cmp = (!isNaN(nx) && !isNaN(ny)) ? nx - ny : x.localeCompare(y);
+        return dir === "asc" ? cmp : -cmp;
+      });
+      rows.forEach(r => body.appendChild(r));
+    }));
+  });
+
+  // Findings filters.
+  const active = new Set([...document.querySelectorAll(".chip[data-sev]")].map(c => c.dataset.sev));
+  const catSel = document.getElementById("category-filter");
+  function applyFindingFilters() {
+    document.querySelectorAll(".finding").forEach(f => {
+      const ok = active.has(f.dataset.sev) && (!catSel.value || f.dataset.cat === catSel.value);
+      f.classList.toggle("filtered", !ok);
+      f.classList.toggle("hidden", !ok || f.classList.contains("nomatch"));
+    });
+  }
+  document.querySelectorAll(".chip[data-sev]").forEach(chip => chip.addEventListener("click", () => {
+    const on = chip.getAttribute("aria-pressed") !== "true";
+    chip.setAttribute("aria-pressed", String(on));
+    on ? active.add(chip.dataset.sev) : active.delete(chip.dataset.sev);
+    applyFindingFilters();
+  }));
+  catSel && catSel.addEventListener("change", applyFindingFilters);
+
+  // Global search.
+  const search = document.getElementById("search");
+  let timer;
+  search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(runSearch, 150); });
+  function runSearch() {
+    const q = search.value.trim().toLowerCase();
+    document.querySelectorAll(".searchable-item").forEach(el => {
+      const match = !q || el.textContent.toLowerCase().includes(q);
+      el.classList.toggle("nomatch", !match);
+      el.classList.toggle("hidden", !match || el.classList.contains("filtered"));
+    });
+    if (q) document.querySelectorAll("details.card").forEach(d => {
+      if (d.querySelector(".searchable-item:not(.nomatch)")) d.open = true;
+    });
+    renderVisible();
+  }
+  const expand = document.getElementById("expand");
+  expand.addEventListener("click", () => {
+    const open = expand.textContent === "Expand all";
+    document.querySelectorAll("details.card").forEach(d => d.open = open);
+    expand.textContent = open ? "Collapse all" : "Expand all";
+    renderVisible();
+  });
+})();
+</script>
+</body>
+</html>
