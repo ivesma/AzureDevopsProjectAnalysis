@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "azdo-analyser"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Comprehensive discovery, analysis, documentation and visualisation of Azure DevOps projects."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -29,6 +29,9 @@ azdo-analyse = "azdo_analyser.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "azdo_analyser.__version__" }
 
 [tool.setuptools.package-data]
 azdo_analyser = ["templates/*.j2"]

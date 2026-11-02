@@ -47,12 +47,21 @@ GitHub release (`azdo-analyse-<version>-<os>-<arch>.zip|.tar.gz`). They take exa
 To build one yourself (PyInstaller cannot cross-compile, so build on each target OS):
 
 ```bash
-pip install ".[llm]" pyinstaller
+pip install -e ".[llm]" pyinstaller
 python packaging/build.py          # -> dist/azdo-analyse[.exe] + release archive, after a --demo smoke test
+python packaging/build.py --version 1.2.3   # explicit version
 ```
 
-The [build workflow](.github/workflows/build.yml) does this on all platforms for every push and pull request,
-and publishes a GitHub release when a `v*` tag is pushed. For Azure DevOps, [AzDOProjAnalysis.yml](AzDOProjAnalysis.yml)
+**Versioning.** The build script takes the version from the branch name (`v1.2.3`, `1.2.3` or `release/v1.2.3`)
+and stamps it into `src/azdo_analyser/__init__.py` (the single source, also used by `pyproject.toml`) before
+building, so `azdo-analyse --version`, the reports and the Windows file properties carry it. Other branch names
+keep the version already in `__init__.py`.
+
+**Releases.** The [build workflow](.github/workflows/build.yml) builds all platforms for every push and pull
+request. When a pull request from a version branch (e.g. `v1.2.3`) is merged to `main`, it builds with that
+version and publishes GitHub release `v1.2.3` with the archives attached (a version with a suffix such as
+`-rc.1` is marked as a pre-release). Direct pushes to `main`, non-version branch names and versions that are
+already released build without a release. For Azure DevOps, [AzDOProjAnalysis.yml](AzDOProjAnalysis.yml)
 has a **Build** stage (tick the operating systems to build when queuing: Windows, Linux, macOS) and an **Execute**
 stage that runs the freshly built executable against the project, authenticating with the pipeline's
 `$(System.AccessToken)` as the PAT, and publishes the output as the `assessment` artifact. On macOS the binaries are unsigned: clear the

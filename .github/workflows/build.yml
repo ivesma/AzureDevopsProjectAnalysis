@@ -1,18 +1,63 @@
 name: Build executables
 
+# Pull requests and other pushes build and test every platform.
+# A push to main (normally a merged PR from a branch named like v1.2.3) also publishes GitHub release v1.2.3,
+# with the version taken from the merged branch's name and stamped into the executables.
+
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      release: ${{ steps.resolve.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release=false
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_name }}" = "main" ]; then
+            # Push to main: use the head branch of the PR that was merged to produce this commit.
+            branch=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+              --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].head.ref // ""')
+            if [ -z "$branch" ]; then
+              echo "::warning::No merged pull request found for ${{ github.sha }}; building without a release."
+            fi
+          else
+            branch="${{ github.head_ref || github.ref_name }}"
+          fi
+
+          version=$(python3 packaging/build.py --branch "$branch" --print-version)
+          if [ -n "$branch" ] && [ "${{ github.event_name }}" = "push" ]; then
+            if [ -z "$version" ]; then
+              echo "::warning::Merged branch '$branch' is not named like v1.2.3; building without a release."
+            elif gh release view "v$version" >/dev/null 2>&1; then
+              echo "::warning::Release v$version already exists; building without a release."
+            else
+              release=true
+            fi
+          fi
+
+          echo "Branch: ${branch:-<none>}  Version: ${version:-<unchanged>}  Release: $release"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -33,10 +78,16 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install ".[llm]" pyinstaller
+          pip install -e ".[llm]" pyinstaller
 
       - name: Build and smoke test
-        run: python packaging/build.py
+        shell: bash
+        run: |
+          if [ -n "${{ needs.version.outputs.version }}" ]; then
+            python packaging/build.py --version "${{ needs.version.outputs.version }}"
+          else
+            python packaging/build.py
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -46,15 +97,21 @@ jobs:
             dist/*.tar.gz
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    name: GitHub release v${{ needs.version.outputs.version }}
+    if: needs.version.outputs.release == 'true'
+    needs: [version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          tag_name: v${{ needs.version.outputs.version }}
+          name: v${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ contains(needs.version.outputs.version, '-') }}
           generate_release_notes: true
+          files: dist/*
