@@ -1,0 +1,56 @@
+# azdo-analyse configuration. Copy to config.yaml and run:  azdo-analyse --config config.yaml
+# ${VAR} and ${VAR:-default} are expanded from the environment. CLI flags override values here.
+
+organisation: https://dev.azure.com/company   # or just: company
+project: Platform
+
+# Authentication: pat | azcli | managed_identity (preview)
+auth: pat
+pat: ${AZDO_PAT}            # never commit a real token; AZDO_PAT / AZURE_DEVOPS_EXT_PAT are also read automatically
+
+output_folder: ./assessment
+
+# ---- outputs -------------------------------------------------------------
+generate_excel: true
+generate_html: true
+generate_mermaid: true
+generate_json: true
+generate_markdown: true      # Markdown/ and Wiki/ folders
+generate_drawio: true        # DrawIO/ (.drawio, opens in diagrams.net, exportable to Visio) and Graphviz/ (.dot)
+generate_powerbi: false      # PowerBI/ star-schema CSVs
+
+wiki_publish: false          # push the "Project Assessment" page tree into the wiki
+wiki_name: null              # default: the project wiki (created if missing)
+wiki_root: Project Assessment
+
+# ---- scope ---------------------------------------------------------------
+# collectors: [project, repositories, pipelines, releases, environments, agent_pools, library,
+#              service_connections, boards, wiki, test_plans, artifacts, security]
+skip_collectors: []
+history_days: 90             # window for activity metrics, builds, deployments
+stale_days: 180              # repositories / service connections unused for longer are flagged
+max_commits_per_repo: 2000
+max_pull_requests_per_repo: 500
+max_builds: 5000
+max_work_items: 5000
+max_yaml_files_per_repo: 300
+max_wiki_pages: 500
+scan_repository_yaml: true   # read every *.yml / *.yaml on default branches (template resolution)
+expand_yaml_via_preview: false  # ask Azure DevOps to expand templates (pipeline preview API)
+
+# ---- analysis tuning -----------------------------------------------------
+production_pattern: "(?i)(^|[^a-z])(prod|production|prd|live)([^a-z]|$)"
+max_project_admins: 5
+min_build_success_rate: 0.7
+hosted_parallel_job_cost: 40.0
+self_hosted_parallel_job_cost: 15.0
+hosted_minute_cost: 0.008
+
+# ---- transport -----------------------------------------------------------
+timeout: 60
+max_retries: 5
+verify_ssl: true
+
+# ---- optional: Claude-written executive summary (pip install "azdo-analyser[llm]", set ANTHROPIC_API_KEY)
+llm_summary: false
+llm_model: claude-opus-5-5
