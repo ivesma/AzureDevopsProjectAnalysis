@@ -52,8 +52,10 @@ python packaging/build.py          # -> dist/azdo-analyse[.exe] + release archiv
 ```
 
 The [build workflow](.github/workflows/build.yml) does this on all platforms for every push and pull request,
-and publishes a GitHub release when a `v*` tag is pushed. For Azure DevOps, [azure-pipelines.yml](azure-pipelines.yml)
-does the same; when queued manually, tick the operating systems to build (Windows, Linux, macOS). On macOS the binaries are unsigned: clear the
+and publishes a GitHub release when a `v*` tag is pushed. For Azure DevOps, [AzDOProjAnalysis.yml](AzDOProjAnalysis.yml)
+has a **Build** stage (tick the operating systems to build when queuing: Windows, Linux, macOS) and an **Execute**
+stage that runs the freshly built executable against the project, authenticating with the pipeline's
+`$(System.AccessToken)` as the PAT, and publishes the output as the `assessment` artifact. On macOS the binaries are unsigned: clear the
 quarantine flag with `xattr -d com.apple.quarantine azdo-analyse` before first run.
 
 ## CLI

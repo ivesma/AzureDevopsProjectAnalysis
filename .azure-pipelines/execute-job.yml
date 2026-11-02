@@ -1,0 +1,70 @@
+# Run the executable built for `platform` against an Azure DevOps project and publish the assessment.
+# Authenticates with the pipeline's job access token ($(System.AccessToken)) passed as the PAT, so the
+# project build service identity needs read access to the areas being analysed (see docs/permissions.md).
+
+parameters:
+  - name: platform
+    type: string
+  - name: vmImage
+    type: string
+  - name: analysedProject
+    type: string
+  - name: historyDays
+    type: number
+    default: 90
+  - name: wikiPublish
+    type: boolean
+    default: false
+
+jobs:
+  - job: analyse
+    displayName: Analyse ${{ parameters.analysedProject }} (${{ parameters.platform }})
+    pool:
+      vmImage: ${{ parameters.vmImage }}
+    variables:
+      - ${{ if startsWith(parameters.platform, 'windows') }}:
+          - name: exe
+            value: $(Pipeline.Workspace)\bin\azdo-analyse.exe
+      - ${{ else }}:
+          - name: exe
+            value: $(Pipeline.Workspace)/bin/azdo-analyse
+      - ${{ if eq(parameters.wikiPublish, true) }}:
+          - name: wikiFlag
+            value: --wiki-publish
+      - ${{ else }}:
+          - name: wikiFlag
+            value: ""
+      - name: outputDir
+        value: $(Build.ArtifactStagingDirectory)/assessment
+    steps:
+      - checkout: none
+
+      - task: DownloadPipelineArtifact@2
+        displayName: Download executable
+        inputs:
+          buildType: current
+          artifactName: azdo-analyse-${{ parameters.platform }}
+          targetPath: $(Pipeline.Workspace)/bin
+
+      - ${{ if not(startsWith(parameters.platform, 'windows')) }}:
+          - script: chmod +x "$(exe)"
+            displayName: Make executable
+
+      - script: >
+          "$(exe)"
+          --org "$(System.CollectionUri)"
+          --project "${{ parameters.analysedProject }}"
+          --auth pat
+          --history-days ${{ parameters.historyDays }}
+          --output "$(outputDir)"
+          $(wikiFlag)
+        displayName: Run azdo-analyse
+        env:
+          AZDO_PAT: $(System.AccessToken)
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish assessment
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: $(outputDir)
+          artifact: assessment

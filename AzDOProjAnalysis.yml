@@ -1,0 +1,112 @@
+# Builds the standalone azdo-analyse executable for the operating systems selected at queue time (Build stage),
+# then runs it against an Azure DevOps project using the pipeline's job access token as the PAT (Execute stage).
+# CI / tag runs use the parameter defaults; pull-request runs only build.
+
+trigger:
+  branches:
+    include: [main]
+  tags:
+    include: ["v*"]
+
+pr:
+  branches:
+    include: [main]
+
+parameters:
+  - name: buildWindows
+    displayName: Build for Windows (x64)
+    type: boolean
+    default: true
+  - name: buildLinux
+    displayName: Build for Linux (x64)
+    type: boolean
+    default: true
+  - name: buildMacOS
+    displayName: Build for macOS (x64)
+    type: boolean
+    default: true
+  - name: runSmokeTest
+    displayName: Run --demo smoke test
+    type: boolean
+    default: true
+  - name: runAnalysis
+    displayName: Execute the analysis after the build
+    type: boolean
+    default: true
+  - name: analysedProject
+    displayName: Project to analyse
+    type: string
+    default: $(System.TeamProject)
+  - name: historyDays
+    displayName: Activity window (days)
+    type: number
+    default: 90
+  - name: wikiPublish
+    displayName: Publish the assessment to the project wiki
+    type: boolean
+    default: false
+
+variables:
+  pythonVersion: "3.12"
+
+stages:
+  - stage: Build
+    displayName: Build executables
+    jobs:
+      - ${{ if eq(parameters.buildWindows, true) }}:
+          - template: .azure-pipelines/build-job.yml
+            parameters:
+              name: windows_x64
+              vmImage: windows-latest
+              pythonVersion: $(pythonVersion)
+              runSmokeTest: ${{ parameters.runSmokeTest }}
+
+      - ${{ if eq(parameters.buildLinux, true) }}:
+          - template: .azure-pipelines/build-job.yml
+            parameters:
+              name: linux_x64
+              vmImage: ubuntu-22.04 # older glibc => binary runs on more distros
+              pythonVersion: $(pythonVersion)
+              runSmokeTest: ${{ parameters.runSmokeTest }}
+
+      - ${{ if eq(parameters.buildMacOS, true) }}:
+          - template: .azure-pipelines/build-job.yml
+            parameters:
+              name: macos_x64
+              vmImage: macOS-14
+              pythonVersion: $(pythonVersion)
+              runSmokeTest: ${{ parameters.runSmokeTest }}
+
+      - ${{ if not(or(parameters.buildWindows, parameters.buildLinux, parameters.buildMacOS)) }}:
+          - job: nothing_selected
+            displayName: No operating system selected
+            pool:
+              vmImage: ubuntu-latest
+            steps:
+              - checkout: none
+              - script: |
+                  echo "##vso[task.logissue type=error]Select at least one operating system to build."
+                  exit 1
+                displayName: Fail
+
+  # Runs the executable on one of the platforms just built (preference: Linux, Windows, macOS).
+  - ${{ if and(eq(parameters.runAnalysis, true), or(parameters.buildWindows, parameters.buildLinux, parameters.buildMacOS)) }}:
+      - stage: Execute
+        displayName: Execute analysis
+        dependsOn: Build
+        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+        jobs:
+          - template: .azure-pipelines/execute-job.yml
+            parameters:
+              ${{ if eq(parameters.buildLinux, true) }}:
+                platform: linux_x64
+                vmImage: ubuntu-22.04
+              ${{ elseif eq(parameters.buildWindows, true) }}:
+                platform: windows_x64
+                vmImage: windows-latest
+              ${{ else }}:
+                platform: macos_x64
+                vmImage: macOS-14
+              analysedProject: ${{ parameters.analysedProject }}
+              historyDays: ${{ parameters.historyDays }}
+              wikiPublish: ${{ parameters.wikiPublish }}
