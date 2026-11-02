@@ -1,0 +1,43 @@
+# One build job: produce dist/azdo-analyse[.exe] plus its release archive and publish them as a pipeline artifact.
+
+parameters:
+  - name: name
+    type: string
+  - name: vmImage
+    type: string
+  - name: pythonVersion
+    type: string
+  - name: runSmokeTest
+    type: boolean
+    default: true
+
+jobs:
+  - job: ${{ parameters.name }}
+    displayName: Build ${{ parameters.name }}
+    pool:
+      vmImage: ${{ parameters.vmImage }}
+    steps:
+      - checkout: self
+
+      - task: UsePythonVersion@0
+        displayName: Use Python ${{ parameters.pythonVersion }}
+        inputs:
+          versionSpec: ${{ parameters.pythonVersion }}
+
+      - script: |
+          python -m pip install --upgrade pip
+          pip install ".[llm]" pyinstaller
+        displayName: Install dependencies
+
+      - ${{ if eq(parameters.runSmokeTest, true) }}:
+          - script: python packaging/build.py
+            displayName: Build and smoke test
+      - ${{ else }}:
+          - script: python packaging/build.py --no-test
+            displayName: Build
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish executable
+        inputs:
+          targetPath: dist
+          artifact: azdo-analyse-${{ parameters.name }}

@@ -38,6 +38,24 @@ Open `assessment/HTML/index.html` in a browser, or `assessment/Excel/ProjectAsse
 
 Requires Python 3.12+.
 
+### Standalone executables (no Python required)
+
+Pre-built single-file executables for Windows (x64), Linux (x64) and macOS (arm64 / x64) are attached to each
+GitHub release (`azdo-analyse-<version>-<os>-<arch>.zip|.tar.gz`). They take exactly the same arguments as the
+`azdo-analyse` command above.
+
+To build one yourself (PyInstaller cannot cross-compile, so build on each target OS):
+
+```bash
+pip install ".[llm]" pyinstaller
+python packaging/build.py          # -> dist/azdo-analyse[.exe] + release archive, after a --demo smoke test
+```
+
+The [build workflow](.github/workflows/build.yml) does this on all platforms for every push and pull request,
+and publishes a GitHub release when a `v*` tag is pushed. For Azure DevOps, [azure-pipelines.yml](azure-pipelines.yml)
+does the same; when queued manually, tick the operating systems to build (Windows, Linux, macOS). On macOS the binaries are unsigned: clear the
+quarantine flag with `xattr -d com.apple.quarantine azdo-analyse` before first run.
+
 ## CLI
 
 ```text
