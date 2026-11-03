@@ -1,0 +1,29 @@
+# Execute the analysis using the executable artifact produced by the Build stage.
+
+parameters:
+  - name: platform
+    type: string
+  - name: vmImage
+    type: string
+  - name: analysedProject
+    type: string
+  - name: historyDays
+    type: number
+    default: 90
+  - name: wikiPublish
+    type: boolean
+    default: false
+
+stages:
+  - stage: Execute
+    displayName: Execute analysis
+    dependsOn: Build
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - template: execute-job.yml
+        parameters:
+          platform: ${{ parameters.platform }}
+          vmImage: ${{ parameters.vmImage }}
+          analysedProject: ${{ parameters.analysedProject }}
+          historyDays: ${{ parameters.historyDays }}
+          wikiPublish: ${{ parameters.wikiPublish }}
