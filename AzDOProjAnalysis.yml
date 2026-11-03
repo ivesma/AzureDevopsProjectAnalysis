@@ -54,7 +54,7 @@ stages:
     displayName: Build executables
     jobs:
       - ${{ if eq(parameters.buildWindows, true) }}:
-          - template: .azure-pipelines/build-job.yml
+          - template: .pipelines/templates/build-job.yml
             parameters:
               name: windows_x64
               vmImage: windows-latest
@@ -62,7 +62,7 @@ stages:
               runSmokeTest: ${{ parameters.runSmokeTest }}
 
       - ${{ if eq(parameters.buildLinux, true) }}:
-          - template: .azure-pipelines/build-job.yml
+          - template: .pipelines/templates/build-job.yml
             parameters:
               name: linux_x64
               vmImage: ubuntu-22.04 # older glibc => binary runs on more distros
@@ -70,7 +70,7 @@ stages:
               runSmokeTest: ${{ parameters.runSmokeTest }}
 
       - ${{ if eq(parameters.buildMacOS, true) }}:
-          - template: .azure-pipelines/build-job.yml
+          - template: .pipelines/templates/build-job.yml
             parameters:
               name: macos_x64
               vmImage: macOS-14
@@ -91,22 +91,17 @@ stages:
 
   # Runs the executable on one of the platforms just built (preference: Linux, Windows, macOS).
   - ${{ if and(eq(parameters.runAnalysis, true), or(parameters.buildWindows, parameters.buildLinux, parameters.buildMacOS)) }}:
-      - stage: Execute
-        displayName: Execute analysis
-        dependsOn: Build
-        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-        jobs:
-          - template: .azure-pipelines/execute-job.yml
-            parameters:
-              ${{ if eq(parameters.buildLinux, true) }}:
-                platform: linux_x64
-                vmImage: ubuntu-22.04
-              ${{ elseif eq(parameters.buildWindows, true) }}:
-                platform: windows_x64
-                vmImage: windows-latest
-              ${{ else }}:
-                platform: macos_x64
-                vmImage: macOS-14
-              analysedProject: ${{ parameters.analysedProject }}
-              historyDays: ${{ parameters.historyDays }}
-              wikiPublish: ${{ parameters.wikiPublish }}
+      - template: .pipelines/templates/execute-stage.yml
+        parameters:
+          ${{ if eq(parameters.buildLinux, true) }}:
+            platform: linux_x64
+            vmImage: ubuntu-22.04
+          ${{ elseif eq(parameters.buildWindows, true) }}:
+            platform: windows_x64
+            vmImage: windows-latest
+          ${{ else }}:
+            platform: macos_x64
+            vmImage: macOS-14
+          analysedProject: ${{ parameters.analysedProject }}
+          historyDays: ${{ parameters.historyDays }}
+          wikiPublish: ${{ parameters.wikiPublish }}
